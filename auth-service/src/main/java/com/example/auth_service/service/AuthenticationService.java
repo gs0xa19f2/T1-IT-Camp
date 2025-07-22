@@ -42,7 +42,7 @@ public class AuthenticationService {
                 .login(request.getLogin())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .roles(Set.of(guestRole))
+                .roles(new java.util.HashSet<>(java.util.Collections.singleton(guestRole)))
                 .build();
         userRepository.save(user);
 

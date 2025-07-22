@@ -9,8 +9,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.Set;
-
 @Component
 @RequiredArgsConstructor
 public class SeedDataConfig implements CommandLineRunner {
@@ -20,7 +18,7 @@ public class SeedDataConfig implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
         if (roleRepository.count() == 0) {
             Role adminRole = new Role();
             adminRole.setName("ROLE_ADMIN");
@@ -36,12 +34,12 @@ public class SeedDataConfig implements CommandLineRunner {
         }
 
         if (userRepository.count() == 0) {
-            Role adminRole = roleRepository.findByName("ROLE_ADMIN").get();
+            Role adminRole = roleRepository.findByName("ROLE_ADMIN").orElseThrow(() -> new IllegalStateException("ROLE_ADMIN not found"));
             User admin = User.builder()
                     .login("admin")
                     .email("admin@example.com")
                     .password(passwordEncoder.encode("password"))
-                    .roles(Set.of(adminRole))
+                    .roles(new java.util.HashSet<>(java.util.Collections.singleton(adminRole)))
                     .build();
             userRepository.save(admin);
         }
