@@ -1,15 +1,12 @@
 package com.example.auth_service.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+// Теперь blacklist работает по jti
 @Entity
 @Table(name = "token_blacklist")
 @Getter
@@ -22,5 +19,5 @@ public class TokenBlacklist {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String token;
+    private String jti; // идентификатор jwt
 }
