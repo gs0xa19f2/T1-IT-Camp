@@ -26,6 +26,7 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final TokenBlacklistService tokenBlacklistService;
 
     public JwtAuthenticationResponse signUp(SignUpRequest request) {
         if (userRepository.existsByLogin(request.getLogin())) {
@@ -35,14 +36,19 @@ public class AuthenticationService {
             throw new IllegalArgumentException("Email is already in use.");
         }
 
-        Role guestRole = roleRepository.findByName("ROLE_GUEST")
-                .orElseThrow(() -> new IllegalStateException("GUEST role not found."));
+        // Не позволяем регистрироваться сразу как админ через публичный эндпоинт
+        if ("ROLE_ADMIN".equals(request.getRole())) {
+            throw new IllegalArgumentException("Cannot register with admin role.");
+        }
+
+        Role role = roleRepository.findByName(request.getRole())
+                .orElseThrow(() -> new IllegalStateException(request.getRole() + " role not found."));
 
         var user = User.builder()
                 .login(request.getLogin())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .roles(new java.util.HashSet<>(java.util.Collections.singleton(guestRole)))
+                .roles(Set.of(role))
                 .build();
         userRepository.save(user);
 
@@ -83,7 +89,8 @@ public class AuthenticationService {
                 .orElseThrow(() -> new InvalidCredentialsException("User not found"));
 
         if (jwtService.isTokenValid(request.getRefreshToken(), user) &&
-                user.getRefreshToken() != null && user.getRefreshToken().equals(request.getRefreshToken())) {
+                user.getRefreshToken() != null && user.getRefreshToken().equals(request.getRefreshToken())
+                && !tokenBlacklistService.isTokenBlacklisted(request.getRefreshToken())) {
             var accessToken = jwtService.generateAccessToken(user);
             return JwtAuthenticationResponse.builder()
                     .accessToken(accessToken)
@@ -98,6 +105,7 @@ public class AuthenticationService {
                 .orElse(null);
 
         if (user != null) {
+            tokenBlacklistService.blacklistToken(request.getRefreshToken());
             user.setRefreshToken(null);
             userRepository.save(user);
         }

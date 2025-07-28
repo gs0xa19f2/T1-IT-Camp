@@ -17,4 +17,7 @@ public class SignUpRequest {
     @NotBlank(message = "Password cannot be blank")
     @Size(min = 6, max = 40, message = "Password must be between 6 and 40 characters")
     private String password;
+
+    @NotBlank(message = "Role cannot be blank")
+    private String role; // Возможные значения: "ROLE_GUEST", "ROLE_PREMIUM_USER", "ROLE_ADMIN"
 }

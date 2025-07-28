@@ -21,6 +21,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,6 +51,7 @@ class AuthenticationServiceTest {
         signUpRequest.setLogin("testuser");
         signUpRequest.setEmail("test@example.com");
         signUpRequest.setPassword("password");
+        signUpRequest.setRole("ROLE_GUEST");
 
         guestRole = new Role();
         guestRole.setName("ROLE_GUEST");
@@ -89,6 +91,49 @@ class AuthenticationServiceTest {
         });
 
         assertEquals("Login is already taken.", exception.getMessage());
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void signUp_shouldRegisterPremiumUser_whenRoleProvided() {
+        SignUpRequest premiumRequest = new SignUpRequest();
+        premiumRequest.setLogin("premiumuser");
+        premiumRequest.setEmail("premium@example.com");
+        premiumRequest.setPassword("password");
+        premiumRequest.setRole("ROLE_PREMIUM_USER");
+
+        Role premiumRole = new Role();
+        premiumRole.setName("ROLE_PREMIUM_USER");
+
+        when(userRepository.existsByLogin(anyString())).thenReturn(false);
+        when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(roleRepository.findByName("ROLE_PREMIUM_USER")).thenReturn(Optional.of(premiumRole));
+        when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
+        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(jwtService.generateAccessToken(any(User.class))).thenReturn("accessToken");
+        when(jwtService.generateRefreshToken(any(User.class))).thenReturn("refreshToken");
+
+        JwtAuthenticationResponse response = authenticationService.signUp(premiumRequest);
+
+        assertNotNull(response);
+        assertEquals("accessToken", response.getAccessToken());
+        assertEquals("refreshToken", response.getRefreshToken());
+        verify(userRepository, times(2)).save(any(User.class));
+    }
+
+    @Test
+    void signUp_shouldNotAllowAdminRole() {
+        SignUpRequest adminRequest = new SignUpRequest();
+        adminRequest.setLogin("adminuser");
+        adminRequest.setEmail("admin@example.com");
+        adminRequest.setPassword("password");
+        adminRequest.setRole("ROLE_ADMIN");
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            authenticationService.signUp(adminRequest);
+        });
+
+        assertEquals("Cannot register with admin role.", exception.getMessage());
         verify(userRepository, never()).save(any(User.class));
     }
 }
